@@ -10,13 +10,13 @@
 
 Watchtower is a centralized threat intelligence platform that:
 
-✅ **Aggregates** IOCs from multiple sources (AlienVault OTX, URLhaus, Google OSV, DigitalSide, Tor Exit Nodes)
-✅ **Enriches** security alerts with multi-source context and confidence scoring
-✅ **Detects** supply chain malware across npm, PyPI, Maven, and Go ecosystems
-✅ **Tracks** specific vulnerable package versions to reduce false positives
-✅ **Integrates** with SentinelOne EDR for real-time threat enrichment
-✅ **Notifies** security teams via Slack with actionable intelligence
-✅ **Exports** IOC feeds in CEF/STIX formats for SIEM ingestion
+- ✅ **Aggregates** IOCs from multiple sources (AlienVault OTX, URLhaus, Google OSV, DigitalSide, Tor Exit Nodes)
+- ✅ **Enriches** security alerts with multi-source context and confidence scoring
+- ✅ **Detects** supply chain malware across npm, PyPI, Maven, and Go ecosystems
+- ✅ **Tracks** specific vulnerable package versions to reduce false positives
+- ✅ **Integrates** with SentinelOne EDR for real-time threat enrichment
+- ✅ **Notifies** security teams via Slack with actionable intelligence
+- ✅ **Exports** IOC feeds in CEF/STIX formats for SIEM ingestion
 
 ## 🚀 Quick Start
 
