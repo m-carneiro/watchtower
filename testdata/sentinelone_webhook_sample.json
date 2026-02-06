@@ -1,0 +1,25 @@
+{
+  "alertId": "test-12345",
+  "threatName": "Trojan.GenericKD.12345678",
+  "classification": "Malware",
+  "indicators": [
+    {
+      "type": "SHA256",
+      "value": "a3f5d8c2b9e1f7a6d4c8e3b5a9f2d6c1e8a4b7d3f9c2a5e8b1d4f7a3c6e9b2d5"
+    },
+    {
+      "type": "IPV4",
+      "value": "192.0.2.1"
+    },
+    {
+      "type": "DNS",
+      "value": "malicious.example.com"
+    }
+  ],
+  "endpoint": {
+    "computerName": "SERVER-42",
+    "osType": "linux",
+    "agentVersion": "23.1.2.5"
+  },
+  "timestamp": "2026-02-01T12:34:56Z"
+}

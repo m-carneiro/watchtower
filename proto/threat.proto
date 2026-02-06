@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package watchtower;
+option go_package = "github.com/hive-corporation/watchtower/pkg/api";
+
+import "google/protobuf/timestamp.proto";
+
+service Watchtower {
+  rpc CheckIOC (CheckRequest) returns (CheckResponse);
+  rpc SearchIOC (SearchRequest) returns (IOCDetails);
+}
+
+// --- CHECK ---
+
+message CheckRequest {
+  string value = 1; // ex: "1.2.3.4" ou Hash
+}
+
+message CheckResponse {
+  bool exists = 1;
+  string threat_type = 2; // ex: "critical_malware" (agregado)
+  int32 confidence_score = 3; // 0-100 (Score calculado/máximo)
+  bool action_block = 4; // Sugestão explícita de ação (facilita pro WAF)
+}
+
+
+// --- SEARCH ---
+
+message SearchRequest {
+  string value = 1;
+}
+
+message IOCDetails {
+  string value = 1;
+  string type = 2; // "ip", "domain", "hash"
+  
+  int32 overall_score = 3; 
+  repeated string all_tags = 4; // ["botnet", "win32", "apt29"]
+  
+  google.protobuf.Timestamp first_seen = 5;
+  google.protobuf.Timestamp last_seen = 6;
+
+  repeated Sighting sightings = 7; 
+}
+
+message Sighting {
+  string source = 1; // "abusech-urlhaus"
+  string external_link = 2; // Link para o reporte original
+  string threat_type = 3;
+  google.protobuf.Timestamp date_ingested = 4;
+}
