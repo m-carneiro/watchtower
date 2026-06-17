@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -14,6 +15,16 @@ import (
 	"github.com/hive-corporation/watchtower/internal/adapter/llm"
 	"github.com/hive-corporation/watchtower/internal/core/domain"
 )
+
+// testWebhookSecret is the shared secret used by the E2E webhook requests.
+const testWebhookSecret = "e2e-test-webhook-secret"
+
+// TestMain configures the SentinelOne webhook secret for the whole package so
+// the authenticated webhook handler accepts the E2E requests below.
+func TestMain(m *testing.M) {
+	os.Setenv("SENTINELONE_WEBHOOK_SECRET", testWebhookSecret)
+	os.Exit(m.Run())
+}
 
 // Mock repository for testing
 type mockRepository struct {
@@ -132,6 +143,7 @@ func TestE2E_KnownGoodDomain_SkipsLLM(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/sentinelone", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testWebhookSecret)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -205,6 +217,7 @@ func TestE2E_HighRiskIOC_SkipsLLM(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/sentinelone", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testWebhookSecret)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -281,6 +294,7 @@ func TestE2E_UnknownIOC_CallsLLMWithValidation(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/sentinelone", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testWebhookSecret)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -333,6 +347,7 @@ func TestE2E_LLMDisabled_FallbackBehavior(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/sentinelone", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testWebhookSecret)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -364,6 +379,7 @@ func TestE2E_ErrorHandling_InvalidJSON(t *testing.T) {
 	// Send invalid JSON
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/sentinelone", bytes.NewBufferString("{invalid}"))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testWebhookSecret)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -398,6 +414,7 @@ func TestE2E_ErrorHandling_MissingFields(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest("POST", "/api/v1/webhooks/sentinelone", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+testWebhookSecret)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
