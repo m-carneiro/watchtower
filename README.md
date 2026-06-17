@@ -129,6 +129,11 @@ grpcurl -plaintext -d '{"value": "lodash@4.17.0"}' \
   localhost:50051 watchtower.Watchtower/SearchIOC
 ```
 
+> These examples rely on server reflection, which is off by default. Either run
+> with `GRPC_ENABLE_REFLECTION=true` (dev) or pass the proto via `grpcurl -proto`.
+> If `GRPC_AUTH_TOKEN`/TLS are set, add `-H "authorization: Bearer <token>"` and
+> drop `-plaintext`.
+
 ### REST API
 
 ```bash
@@ -249,6 +254,9 @@ make env-setup
 Edit `.env` and add your credentials:
 
 ```bash
+# Database (defaults to a local dev connection string if unset)
+DATABASE_URL=postgres://admin:password@localhost:5432/watchtower
+
 # Threat intelligence
 OTX_API_KEY=your-otx-key
 
@@ -257,11 +265,32 @@ SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_CHANNEL_SECURITY=#security-alerts
 
 # SentinelOne webhook
+# Required to accept webhooks — sent by SentinelOne as "Authorization: Bearer <secret>".
+# The endpoint fails closed (401) when this is unset.
 SENTINELONE_WEBHOOK_SECRET=shared-secret
 
 # REST API
+# Auth fails closed (401) when REST_API_AUTH_TOKEN is unset.
 REST_API_AUTH_TOKEN=your-api-token
+REST_API_PORT=8080
+
+# gRPC API
+GRPC_LISTEN_ADDR=localhost:50051
+# Token auth (defense in depth). When set, clients must send
+# "authorization: Bearer <token>" metadata.
+GRPC_AUTH_TOKEN=your-grpc-token
+# Transport security: set cert+key for TLS; add the client CA to require
+# client certificates (mutual TLS).
+GRPC_TLS_CERT=/path/to/server.crt
+GRPC_TLS_KEY=/path/to/server.key
+GRPC_TLS_CLIENT_CA=/path/to/client-ca.crt
+# Reflection leaks the service schema; off by default, enable only in dev.
+GRPC_ENABLE_REFLECTION=false
 ```
+
+> **Security note:** REST auth and the SentinelOne webhook both fail closed when
+> their secrets are unset. The gRPC server runs plaintext on localhost for local
+> development; set `GRPC_TLS_*` and `GRPC_AUTH_TOKEN` to secure it for production.
 
 ## 🎯 Use Cases
 
