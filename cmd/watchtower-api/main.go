@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/hive-corporation/watchtower/internal/adapter/llm"
 	"github.com/hive-corporation/watchtower/internal/adapter/notifier"
 	"github.com/hive-corporation/watchtower/internal/adapter/repository"
+	"github.com/hive-corporation/watchtower/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -22,7 +24,7 @@ func main() {
 	ctx := context.Background()
 
 	// Database connection
-	dbURL := getEnv("DATABASE_URL", "postgres://admin:secretpassword@localhost:5432/watchtower")
+	dbURL := config.GetEnv("DATABASE_URL", "postgres://admin:secretpassword@localhost:5432/watchtower")
 	dbPool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		log.Fatalf("❌ Failed to connect to database: %v", err)
@@ -37,8 +39,8 @@ func main() {
 	if slackToken := os.Getenv("SLACK_BOT_TOKEN"); slackToken != "" {
 		slackNotifier = notifier.NewSlackNotifier(
 			slackToken,
-			getEnv("SLACK_CHANNEL_SECURITY", "#security-alerts"),
-			getEnv("SLACK_MENTION_TEAM", "@security-team"),
+			config.GetEnv("SLACK_CHANNEL_SECURITY", "#security-alerts"),
+			config.GetEnv("SLACK_MENTION_TEAM", "@security-team"),
 		)
 		log.Println("✅ Slack notifier enabled")
 	} else {
@@ -82,7 +84,7 @@ func main() {
 	router.Use(authMiddleware)
 
 	// HTTP server
-	port := getEnv("REST_API_PORT", "8080")
+	port := config.GetEnv("REST_API_PORT", "8080")
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      router,
@@ -115,13 +117,6 @@ func main() {
 	log.Println("✅ Server stopped gracefully")
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -143,15 +138,17 @@ func authMiddleware(next http.Handler) http.Handler {
 		token := r.Header.Get("Authorization")
 		expectedToken := os.Getenv("REST_API_AUTH_TOKEN")
 
-		// If no token configured, allow all requests (development mode)
+		// Fail closed: refuse all requests if no token is configured.
 		if expectedToken == "" {
-			log.Println("⚠️  Warning: REST_API_AUTH_TOKEN not set - auth disabled")
-			next.ServeHTTP(w, r)
+			log.Println("❌ REST_API_AUTH_TOKEN not set - rejecting request (auth required)")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		// Validate Bearer token
-		if token != "Bearer "+expectedToken {
+		// Validate Bearer token with a constant-time comparison to avoid
+		// leaking the token via response-timing side channels.
+		expected := "Bearer " + expectedToken
+		if subtle.ConstantTimeCompare([]byte(token), []byte(expected)) != 1 {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

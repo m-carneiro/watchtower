@@ -14,11 +14,12 @@ import (
 
 	"github.com/hive-corporation/watchtower/internal/adapter/handler"
 	"github.com/hive-corporation/watchtower/internal/adapter/repository"
+	"github.com/hive-corporation/watchtower/internal/config"
 	pb "github.com/hive-corporation/watchtower/proto"
 )
 
 func main() {
-	dbURL := "postgres://admin:secretpassword@localhost:5432/watchtower"
+	dbURL := config.GetEnv("DATABASE_URL", "postgres://admin:secretpassword@localhost:5432/watchtower")
 	dbPool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
