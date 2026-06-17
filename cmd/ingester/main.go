@@ -13,6 +13,7 @@ import (
 
 	"github.com/hive-corporation/watchtower/internal/adapter/provider"
 	"github.com/hive-corporation/watchtower/internal/adapter/repository"
+	"github.com/hive-corporation/watchtower/internal/config"
 	"github.com/hive-corporation/watchtower/internal/core/domain"
 	"github.com/hive-corporation/watchtower/internal/core/ports"
 )
@@ -27,7 +28,7 @@ func main() {
 	defer cancel()
 
 	log.Println("🔌 Database connection...")
-	dbURL := "postgres://admin:secretpassword@localhost:5432/watchtower"
+	dbURL := config.GetEnv("DATABASE_URL", "postgres://admin:secretpassword@localhost:5432/watchtower")
 	dbPool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		log.Fatalf("❌ Error connecting to database: %v", err)
