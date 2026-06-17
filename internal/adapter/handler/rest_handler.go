@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/hive-corporation/watchtower/internal/adapter/exporter"
@@ -189,8 +191,36 @@ func (h *RestHandler) GetIOCFeed(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// authenticateWebhook validates the SentinelOne webhook using a dedicated
+// shared secret (SENTINELONE_WEBHOOK_SECRET) sent as a Bearer token. This keeps
+// the webhook credential separate from the admin REST_API_AUTH_TOKEN.
+//
+// SentinelOne does not HMAC-sign webhook bodies; it lets you configure a custom
+// Authorization header, so a constant-time Bearer comparison is the correct
+// mechanism here. Fails closed when no secret is configured.
+func authenticateWebhook(w http.ResponseWriter, r *http.Request) bool {
+	secret := os.Getenv("SENTINELONE_WEBHOOK_SECRET")
+	if secret == "" {
+		log.Println("❌ SENTINELONE_WEBHOOK_SECRET not set - rejecting webhook")
+		writeError(w, http.StatusUnauthorized, "webhook authentication not configured")
+		return false
+	}
+
+	expected := "Bearer " + secret
+	if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte(expected)) != 1 {
+		log.Println("❌ SentinelOne webhook rejected - invalid credentials")
+		writeError(w, http.StatusUnauthorized, "invalid webhook credentials")
+		return false
+	}
+	return true
+}
+
 // SentinelOneWebhook - Receive alerts from SentinelOne
 func (h *RestHandler) SentinelOneWebhook(w http.ResponseWriter, r *http.Request) {
+	if !authenticateWebhook(w, r) {
+		return
+	}
+
 	var payload SentinelOneAlert
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		log.Printf("❌ Failed to decode SentinelOne webhook: %v", err)
@@ -265,8 +295,10 @@ func (h *RestHandler) SentinelOneWebhook(w http.ResponseWriter, r *http.Request)
 			AlertID:        payload.AlertID,
 			ThreatName:     payload.ThreatName,
 			Classification: payload.Classification,
-			Endpoint:       payload.Endpoint.ComputerName,
-			OSType:         payload.Endpoint.OSType,
+			// Redact the internal hostname before it leaves the network for
+			// an external LLM provider; OSType is non-identifying so it stays.
+			Endpoint: llm.RedactEndpoint(payload.Endpoint.ComputerName),
+			OSType:   payload.Endpoint.OSType,
 			IOCs:           make([]llm.IOCContext, len(enrichedIndicators)),
 		}
 

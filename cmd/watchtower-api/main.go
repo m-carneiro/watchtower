@@ -128,8 +128,9 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip auth for health check
-		if r.URL.Path == "/api/v1/health" {
+		// Skip the general auth for the health check and the SentinelOne
+		// webhook (the webhook has its own dedicated secret in the handler).
+		if r.URL.Path == "/api/v1/health" || r.URL.Path == "/api/v1/webhooks/sentinelone" {
 			next.ServeHTTP(w, r)
 			return
 		}
